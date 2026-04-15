@@ -112,6 +112,29 @@ def delete_user(user_id):
 
     return jsonify({"message": "User deleted successfully"}), 200
 
+@api.route("/login", methods=["POST"])
+def login():
+    data = request.json
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    user = User.query.filter_by(email=email, password=password).first()
+
+    if not user:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    return jsonify({
+        "message": "Login successful",
+        "user": user.serialize()
+    }), 200
+
 
 @api.route("/shirts", methods=["GET"])
 def get_shirts():

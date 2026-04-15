@@ -94,6 +94,8 @@ export const deleteUser = async (userId) => {
 	return data;
 };
 
+
+
 // ---------------------
 // LOGIN
 // ---------------------
@@ -115,7 +117,6 @@ export const loginUser = async (user) => {
 
 	return data;
 };
-
 
 
 // ---------------------

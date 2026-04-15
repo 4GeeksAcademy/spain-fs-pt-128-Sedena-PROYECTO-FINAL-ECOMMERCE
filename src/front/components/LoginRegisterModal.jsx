@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { registerUser, loginUser } from "../../Services/BackendServices.js";
 
-export const LoginRegisterModal = ({ isOpen, onClose, initialTab = "login" }) => {
+export const LoginRegisterModal = ({ isOpen, onClose, initialTab, onLogin }) => {
 	const [activeTab, setActiveTab] = useState(initialTab);
 
 	useEffect(() => {
@@ -56,17 +56,21 @@ export const LoginRegisterModal = ({ isOpen, onClose, initialTab = "login" }) =>
 	};
 
 	const handleLoginSubmit = async (event) => {
-		event.preventDefault();
+	event.preventDefault();
 
-		const data = await loginUser(loginData);
+	const data = await loginUser(loginData);
 
-		if (data?.error) {
-			setMessage("Error al iniciar sesión");
-			return;
-		}
+	if (data?.error) {
+		setMessage("Error al iniciar sesión");
+		return;
+	}
 
-		setMessage("Inicio de sesión correcto");
-	};
+	localStorage.setItem("user", JSON.stringify(data.user));
+	onLogin(data.user);
+	setMessage("Inicio de sesión correcto");
+	onClose();
+};
+
 
 	if (!isOpen) return null;
 
@@ -100,6 +104,8 @@ export const LoginRegisterModal = ({ isOpen, onClose, initialTab = "login" }) =>
 						Registrarse
 					</button>
 				</div>
+
+
 
 				{activeTab === "login" ? (
 					<form onSubmit={handleLoginSubmit}>

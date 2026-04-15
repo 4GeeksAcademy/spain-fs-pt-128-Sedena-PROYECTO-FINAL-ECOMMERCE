@@ -1,26 +1,41 @@
-import React, { useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Navbar } from "../components/Navbar.jsx";
 import { LoginRegisterModal } from "../components/LoginRegisterModal.jsx";
 import { CartModal } from "../components/CartModal.jsx";
-import ScrollToTop from "../components/ScrollToTop"
-import { Footer } from "../components/Footer"
-
-// Base component that maintains the navbar and footer throughout the page and the scroll to top functionality.
 
 export const Layout = () => {
-	const [isloginregisterOpen, setIsLoginRegisterOpen] = useState(false);
+	const [isloginregisterOpen, setLoginRegisterOpen] = useState(false);
 	const [loginregisterTab, setLoginRegisterTab] = useState("login");
 	const [isCartOpen, setIsCartOpen] = useState(false);
+	const [loggedUser, setLoggedUser] = useState(null);
+
+	useEffect(() => {
+		const savedUser = localStorage.getItem("user");
+
+		if (savedUser) {
+			setLoggedUser(JSON.parse(savedUser));
+		}
+	}, []);
 
 	const openLogin = () => {
 		setLoginRegisterTab("login");
-		setIsLoginRegisterOpen(true);
+		setLoginRegisterOpen(true);
 	};
 
 	const openRegister = () => {
 		setLoginRegisterTab("register");
-		setIsLoginRegisterOpen(true);
+		setLoginRegisterOpen(true);
+	};
+
+	const handleLogin = (user) => {
+	setLoggedUser(user);
+};
+
+	const handleLogout = () => {
+		localStorage.removeItem("user");
+		setLoggedUser(null);
 	};
 
 	return (
@@ -29,20 +44,20 @@ export const Layout = () => {
 				onOpenLogin={openLogin}
 				onOpenRegister={openRegister}
 				onOpenCart={() => setIsCartOpen(true)}
-			/>
+				loggedUser={loggedUser}
+				onLogout={handleLogout}/>
 
 			<Outlet />
 
 			<LoginRegisterModal
 				isOpen={isloginregisterOpen}
-				onClose={() => setIsLoginRegisterOpen(false)}
+				onClose={() => setLoginRegisterOpen(false)}
 				initialTab={loginregisterTab}
-			/>
+				onLogin={handleLogin} />
 
 			<CartModal
 				isOpen={isCartOpen}
-				onClose={() => setIsCartOpen(false)}
-			/>
+				onClose={() => setIsCartOpen(false)} />
 		</>
 	);
 };
