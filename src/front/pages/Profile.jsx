@@ -30,6 +30,7 @@ export const Profile = () => {
 		}
 
 		localStorage.removeItem("user");
+		localStorage.removeItem("token");
 
 		dispatch({
 			type: "set_user",

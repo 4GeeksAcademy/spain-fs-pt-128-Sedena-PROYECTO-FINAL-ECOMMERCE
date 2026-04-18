@@ -78,6 +78,7 @@ export const LoginRegisterModal = ({ isOpen, onClose, initialTab }) => {
 		}
 
 		localStorage.setItem("user", JSON.stringify(data.user));
+		localStorage.setItem("token", data.token);
 
 		dispatch({
 			type: "set_user",

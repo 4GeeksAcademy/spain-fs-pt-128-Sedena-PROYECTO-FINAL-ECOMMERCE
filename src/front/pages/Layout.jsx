@@ -4,11 +4,12 @@ import { Navbar } from "../components/Navbar.jsx";
 import { LoginRegisterModal } from "../components/LoginRegisterModal.jsx";
 import { CartModal } from "../components/CartModal.jsx";
 import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
+import { Footer } from "../components/Footer.jsx";
 
 export const Layout = () => {
 	const { dispatch } = useGlobalReducer();
 
-	const [isloginregisterOpen, setLoginRegisterOpen] = useState(false);
+	const [isLoginRegisterOpen, setLoginRegisterOpen] = useState(false);
 	const [loginregisterTab, setLoginRegisterTab] = useState("login");
 	const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -21,7 +22,7 @@ export const Layout = () => {
 				payload: JSON.parse(savedUser)
 			});
 		}
-	}, []);
+	}, [dispatch]);
 
 	const openLogin = () => {
 		setLoginRegisterTab("login");
@@ -35,6 +36,7 @@ export const Layout = () => {
 
 	const handleLogout = () => {
 		localStorage.removeItem("user");
+		localStorage.removeItem("token");
 
 		dispatch({
 			type: "set_user",
@@ -43,26 +45,33 @@ export const Layout = () => {
 	};
 
 	return (
-		<>
-			<Navbar
-				onOpenLogin={openLogin}
-				onOpenRegister={openRegister}
-				onOpenCart={() => setIsCartOpen(true)}
-				onLogout={handleLogout}
-			/>
+	<div className="site-shell">
+		<Navbar
+			onOpenLogin={openLogin}
+			onOpenRegister={openRegister}
+			onOpenCart={() => setIsCartOpen(true)}
+			onLogout={handleLogout}
+		/>
 
+		<main className="site-main">
 			<Outlet />
+		</main>
 
-			<LoginRegisterModal
-				isOpen={isloginregisterOpen}
-				onClose={() => setLoginRegisterOpen(false)}
-				initialTab={loginregisterTab}
-			/>
+		<Footer
+			onOpenLogin={openLogin}
+			onOpenRegister={openRegister}
+		/>
 
-			<CartModal
-				isOpen={isCartOpen}
-				onClose={() => setIsCartOpen(false)}
-			/>
-		</>
-	);
+		<LoginRegisterModal
+			isOpen={isLoginRegisterOpen}
+			onClose={() => setLoginRegisterOpen(false)}
+			initialTab={loginregisterTab}
+		/>
+
+		<CartModal
+			isOpen={isCartOpen}
+			onClose={() => setIsCartOpen(false)}
+		/>
+	</div>
+);
 };

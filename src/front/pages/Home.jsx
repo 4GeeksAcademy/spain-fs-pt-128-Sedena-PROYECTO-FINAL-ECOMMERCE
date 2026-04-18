@@ -1,15 +1,12 @@
-import React, { useEffect, useState } from "react"
-import rigoImageUrl from "../assets/img/rigo-baby.jpg";
-import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
+import React, { useEffect, useState, useRef } from "react";
 import { CardCamisetasMediana } from "../components/CardCamisetasMediana.jsx";
-import { getShirts } from "../../Services/BackendServices.js";
-import { CartModal } from "../components/CartModal.jsx";
 import { HeaderBody } from "../components/HeaderBody.jsx";
-
+import { BannerSection } from "../components/BannerSection.jsx";
+import { getShirts } from "../../Services/BackendServices.js";
 
 export const Home = () => {
 	const [shirts, setShirts] = useState([]);
-	const [isCartOpen, setIsCartOpen] = useState(false);
+	const productsRef = useRef(null);
 
 	const loadShirts = async () => {
 		const data = await getShirts();
@@ -23,21 +20,32 @@ export const Home = () => {
 		loadShirts();
 	}, []);
 
+	const scrollToCollection = () => {
+		if (productsRef.current) {
+			productsRef.current.scrollIntoView({ behavior: "smooth" });
+		}
+	};
+
 	return (
-	
-	<>
-		<HeaderBody onViewCollection={() => window.scrollTo({ top: 800, behavior: "smooth" })} />
+		<>
+			<HeaderBody onViewCollection={scrollToCollection} />
 
-		<div className="container mt-5">
-			<h1 className="mb-4">Camisetas</h1>
+			<section ref={productsRef} className="products-section">
+				<div className="products-header">
+					<div>
+						<p className="section-label">Colección</p>
+						<h2 className="section-title">Nuestras camisetas</h2>
+					</div>
+				</div>
 
-			<div className="row">
-				{shirts.map((shirt) => (
-					<CardCamisetasMediana key={shirt.id} shirt={shirt} />
-				))}
-			</div>
-		</div>
-	</>
+				<div className="products-grid">
+					{shirts.map((shirt) => (
+						<CardCamisetasMediana key={shirt.id} shirt={shirt} />
+					))}
+				</div>
+			</section>
 
+			<BannerSection />
+		</>
 	);
 };

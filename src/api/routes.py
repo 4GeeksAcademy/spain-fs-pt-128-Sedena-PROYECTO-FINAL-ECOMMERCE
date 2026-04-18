@@ -1,15 +1,16 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from flask import Flask, request, jsonify, url_for, Blueprint
+from flask import request, jsonify, Blueprint
 from api.models import db, User, Shirt, Cart, CartItem, ShirtVariant
-from api.utils import generate_sitemap, APIException
-from flask_cors import CORS
+import os
+import stripe
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 api = Blueprint('api', __name__)
 
-# Allow CORS requests to this API
-CORS(api)
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+print("STRIPE KEY:", os.getenv("STRIPE_SECRET_KEY"))
 
 
 @api.route('/hello', methods=['POST', 'GET'])
@@ -20,7 +21,13 @@ def handle_hello():
     return jsonify(response_body), 200
 
 @api.route("/users/<int:user_id>", methods=["GET"])
+@jwt_required()
 def get_user(user_id):
+    current_user_id = get_jwt_identity()
+
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     user = User.query.get(user_id)
 
     if not user:
@@ -68,7 +75,13 @@ def create_user():
 
 
 @api.route("/users/<int:user_id>", methods=["PUT"])
+@jwt_required()
 def update_user(user_id):
+    current_user_id = get_jwt_identity()
+
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     data = request.json
 
     if not data:
@@ -99,13 +112,28 @@ def update_user(user_id):
         "user": user.serialize()
     }), 200
 
-
 @api.route("/users/<int:user_id>", methods=["DELETE"])
+@jwt_required()
 def delete_user(user_id):
+    current_user_id = get_jwt_identity()
+
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     user = User.query.get(user_id)
 
     if not user:
         return jsonify({"error": "User not found"}), 404
+
+    cart = Cart.query.filter_by(user_id=user_id).first()
+
+    if cart:
+        cart_items = CartItem.query.filter_by(cart_id=cart.id).all()
+
+        for item in cart_items:
+            db.session.delete(item)
+
+        db.session.delete(cart)
 
     db.session.delete(user)
     db.session.commit()
@@ -130,11 +158,13 @@ def login():
     if not user:
         return jsonify({"error": "Invalid credentials"}), 401
 
+    access_token = create_access_token(identity=str(user.id))
+
     return jsonify({
         "message": "Login successful",
+        "token": access_token,
         "user": user.serialize()
     }), 200
-
 
 @api.route("/shirts", methods=["GET"])
 def get_shirts():
@@ -153,7 +183,13 @@ def get_shirt(shirt_id):
 
 
 @api.route("/cart/<int:user_id>", methods=["GET"])
+@jwt_required()
 def get_cart(user_id):
+    current_user_id = get_jwt_identity()
+
+    if int(current_user_id) != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     cart = Cart.query.filter_by(user_id=user_id).first()
 
     if not cart:
@@ -163,11 +199,14 @@ def get_cart(user_id):
 
 
 @api.route("/cart/items", methods=["POST"])
+@jwt_required()
 def add_to_cart():
     data = request.json
 
     if not data:
         return jsonify({"error": "No data provided"}), 400
+
+    current_user_id = int(get_jwt_identity())
 
     user_id = data.get("user_id")
     variant_id = data.get("shirt_variant_id")
@@ -175,6 +214,9 @@ def add_to_cart():
 
     if not user_id or not variant_id:
         return jsonify({"error": "user_id and shirt_variant_id are required"}), 400
+
+    if current_user_id != int(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
 
     variant = ShirtVariant.query.get(variant_id)
     if not variant:
@@ -208,6 +250,7 @@ def add_to_cart():
 
 
 @api.route("/cart/items/<int:item_id>", methods=["PUT"])
+@jwt_required()
 def update_cart_item(item_id):
     data = request.json
 
@@ -224,6 +267,11 @@ def update_cart_item(item_id):
     if not item:
         return jsonify({"error": "Item not found"}), 404
 
+    current_user_id = int(get_jwt_identity())
+
+    if item.cart.user_id != current_user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     if quantity < 1:
         return jsonify({"error": "Quantity must be at least 1"}), 400
 
@@ -237,13 +285,61 @@ def update_cart_item(item_id):
 
 
 @api.route("/cart/items/<int:item_id>", methods=["DELETE"])
+@jwt_required()
 def delete_item(item_id):
     item = CartItem.query.get(item_id)
 
-    if item:
-        db.session.delete(item)
-        db.session.commit()
-        return jsonify({"message": "Item deleted"}), 200
+    if not item:
+        return jsonify({"error": "Item not found"}), 404
 
-    return jsonify({"error": "Item not found"}), 404
+    current_user_id = int(get_jwt_identity())
 
+    if item.cart.user_id != current_user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    db.session.delete(item)
+    db.session.commit()
+
+    return jsonify({"message": "Item deleted"}), 200
+
+@api.route("/create-checkout-session/<int:user_id>", methods=["POST"])
+@jwt_required()
+def create_checkout_session(user_id):
+    current_user_id = int(get_jwt_identity())
+
+    if current_user_id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    cart = Cart.query.filter_by(user_id=user_id).first()
+
+    if not cart or len(cart.items) == 0:
+        return jsonify({"error": "Cart is empty"}), 400
+
+    if not stripe.api_key:
+        return jsonify({"error": "Stripe secret key not configured"}), 500
+
+    line_items = []
+
+    for item in cart.items:
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {
+                    "name": f"{item.shirt_variant.shirt.name} - {item.shirt_variant.size}"
+                },
+                "unit_amount": int(float(item.shirt_variant.price) * 100)
+            },
+            "quantity": item.quantity
+        })
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=line_items,
+        mode="payment",
+        success_url="https://opulent-space-chainsaw-697xjjwvp67r2rj65-3000.app.github.dev/success?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url="https://opulent-space-chainsaw-697xjjwvp67r2rj65-3000.app.github.dev/checkout"
+    )
+
+    return jsonify({"url": session.url}), 200
+
+  

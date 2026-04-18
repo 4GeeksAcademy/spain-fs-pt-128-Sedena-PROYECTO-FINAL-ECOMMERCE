@@ -1,5 +1,18 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
+const getAuthHeaders = () => {
+	const token = localStorage.getItem("token");
+
+	return token
+		? {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`
+		  }
+		: {
+				"Content-Type": "application/json"
+		  };
+};
+
 // ---------------------
 // SHIRTS
 // ---------------------
@@ -51,7 +64,10 @@ export const registerUser = async (user) => {
 };
 
 export const getUserById = async (userId) => {
-	const response = await fetch(`${BACKEND_URL}/api/users/${userId}`);
+	const response = await fetch(`${BACKEND_URL}/api/users/${userId}`, {
+		method: "GET",
+		headers: getAuthHeaders()
+	});
 
 	const data = await response.json();
 
@@ -62,13 +78,11 @@ export const getUserById = async (userId) => {
 	return data;
 };
 
-export const updateUser = async (userId, userData) => {
+export const updateUser = async (userId, updatedData) => {
 	const response = await fetch(`${BACKEND_URL}/api/users/${userId}`, {
 		method: "PUT",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(userData),
+		headers: getAuthHeaders(),
+		body: JSON.stringify(updatedData)
 	});
 
 	const data = await response.json();
@@ -83,6 +97,7 @@ export const updateUser = async (userId, userData) => {
 export const deleteUser = async (userId) => {
 	const response = await fetch(`${BACKEND_URL}/api/users/${userId}`, {
 		method: "DELETE",
+		headers: getAuthHeaders()
 	});
 
 	const data = await response.json();
@@ -93,7 +108,6 @@ export const deleteUser = async (userId) => {
 
 	return data;
 };
-
 
 
 // ---------------------
@@ -124,24 +138,9 @@ export const loginUser = async (user) => {
 // ---------------------
 
 export const getCartByUserId = async (userId) => {
-	const response = await fetch(`${BACKEND_URL}/api/cart/${userId}`);
-
-	const data = await response.json();
-
-	if (!response.ok) {
-		return { error: true, data };
-	}
-
-	return data;
-};
-
-export const addToCart = async (cartItem) => {
-	const response = await fetch(`${BACKEND_URL}/api/cart/items`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(cartItem),
+	const response = await fetch(`${BACKEND_URL}/api/cart/${userId}`, {
+		method: "GET",
+		headers: getAuthHeaders()
 	});
 
 	const data = await response.json();
@@ -153,13 +152,27 @@ export const addToCart = async (cartItem) => {
 	return data;
 };
 
-export const updateCartItem = async (itemId, quantityData) => {
+export const addToCart = async (cartData) => {
+	const response = await fetch(`${BACKEND_URL}/api/cart/items`, {
+		method: "POST",
+		headers: getAuthHeaders(),
+		body: JSON.stringify(cartData)
+	});
+
+	const data = await response.json();
+
+	if (!response.ok) {
+		return { error: true, data };
+	}
+
+	return data;
+};
+
+export const updateCartItem = async (itemId, updatedData) => {
 	const response = await fetch(`${BACKEND_URL}/api/cart/items/${itemId}`, {
 		method: "PUT",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(quantityData),
+		headers: getAuthHeaders(),
+		body: JSON.stringify(updatedData)
 	});
 
 	const data = await response.json();
@@ -174,6 +187,22 @@ export const updateCartItem = async (itemId, quantityData) => {
 export const deleteCartItem = async (itemId) => {
 	const response = await fetch(`${BACKEND_URL}/api/cart/items/${itemId}`, {
 		method: "DELETE",
+		headers: getAuthHeaders()
+	});
+
+	const data = await response.json();
+
+	if (!response.ok) {
+		return { error: true, data };
+	}
+
+	return data;
+};
+
+export const createCheckoutSession = async (userId) => {
+	const response = await fetch(`${BACKEND_URL}/api/create-checkout-session/${userId}`, {
+		method: "POST",
+		headers: getAuthHeaders()
 	});
 
 	const data = await response.json();

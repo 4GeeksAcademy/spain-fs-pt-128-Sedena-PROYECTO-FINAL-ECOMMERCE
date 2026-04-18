@@ -117,7 +117,7 @@ export const CartModal = ({ isOpen, onClose }) => {
 					</div>
 
 					<button
-						className="cartpro-checkout-btn"
+						className="cartpro-CheckOut-btn"
 						onClick={() => {
 							onClose();
 							navigate("/checkout");
